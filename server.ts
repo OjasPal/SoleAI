@@ -41,7 +41,12 @@ if (geminiApiKey) {
   }
 }
 
-// ---------------- API ENDPOINTS ----------------
+// Status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    geminiConfigured: Boolean(geminiApiKey && aiClient),
+  });
+});
 
 // 1. Catalogue
 app.get('/api/shoes', (req, res) => {
@@ -238,6 +243,7 @@ Respond as a JSON object with this exact shape:
 Ensure the JSON is completely valid without markdown quotes around it, or wrapped in \`\`\`json.`;
 
     let replyData: any = null;
+    let responseSource: 'gemini' | 'rules' = 'rules';
 
     if (aiClient) {
       try {
@@ -262,6 +268,7 @@ Ensure the JSON is completely valid without markdown quotes around it, or wrappe
         const rawText = response.text?.trim() || '';
         const cleanJson = rawText.replace(/^```json/, '').replace(/```$/, '').trim();
         replyData = JSON.parse(cleanJson);
+        responseSource = 'gemini';
       } catch (geminiErr) {
         console.warn('[SoleAI] Gemini API call failed, using intelligent rule engine:', geminiErr);
       }
@@ -270,6 +277,7 @@ Ensure the JSON is completely valid without markdown quotes around it, or wrappe
     // High-fidelity fallback rule engine if Gemini API key is missing or failed
     if (!replyData) {
       replyData = generateIntelligentShoeResponse(message, shoesStore, brandSettingsStore);
+      responseSource = 'rules';
     }
 
     // Attach full shoe objects for recommended products
@@ -297,7 +305,8 @@ Ensure the JSON is completely valid without markdown quotes around it, or wrappe
       actionData: replyData.actionData || null,
       needsHumanHandoff: Boolean(replyData.needsHumanHandoff),
       handoffReason: replyData.handoffReason || null,
-      intent: replyData.intent || 'General Footwear Inquiry'
+      intent: replyData.intent || 'General Footwear Inquiry',
+      source: responseSource
     });
   } catch (err: any) {
     console.error('[SoleAI] Chat error:', err);
@@ -404,7 +413,7 @@ function generateIntelligentShoeResponse(query: string, shoes: FootwearItem[], b
         shoeId: matched.id,
         shoeName: matched.name,
         priceINR: matched.priceINR,
-        checkoutUrl: `https://kickscraft.in/checkout/${matched.id}`
+        checkoutUrl: `https://kickscraft.example/checkout/${matched.id}`
       },
       needsHumanHandoff: false,
       intent: 'Product Discovery'

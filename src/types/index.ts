@@ -1,4 +1,4 @@
-export type FootwearCategory = 'sneakers' | 'loafers' | 'boots' | 'slides' | 'formals';
+export type FootwearCategory = 'sneakers' | 'retro-runners' | 'loafers' | 'boots' | 'slides' | 'formals';
 
 export interface ShoeSizeStock {
   sizeUK: number;
@@ -6,23 +6,39 @@ export interface ShoeSizeStock {
   inStock: boolean;
 }
 
+export interface Colourway {
+  name: string;
+  hex: string;
+}
+
+export interface FootwearFit {
+  tendency: 'runs_snug' | 'true_to_size' | 'roomy';
+  offsetHalfSizes: number; // e.g., 0, 1, -1, 2
+  note: string;
+}
+
 export interface FootwearItem {
   id: string;
+  slug?: string;
   name: string;
   tagline: string;
   category: FootwearCategory;
   priceINR: number;
   originalPriceINR?: number;
-  imageUrl: string;
+  colourways?: Colourway[];
   colorway: string;
   material: string;
-  fitGuidance: string; // e.g. "Runs snug. Recommend 1 size up for broad feet."
+  fit?: FootwearFit;
+  fitGuidance: string;
   sizeRecommendation: 'true_to_size' | 'size_up' | 'size_down';
   sizes: ShoeSizeStock[];
+  images?: string[];
+  imageUrl?: string;
   description: string;
   isBestSeller?: boolean;
   featured?: boolean;
 }
+
 
 export interface ChatMessage {
   id: string;
@@ -41,6 +57,12 @@ export interface ChatMessage {
     discountPercent?: number;
     orderId?: string;
   };
+  source?: 'gemini' | 'rules';
+  latencyMs?: number;
+}
+
+export interface ApiStatus {
+  geminiConfigured: boolean;
 }
 
 export interface Conversation {

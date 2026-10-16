@@ -2,31 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg: #000000;
+  --bg-raised: #08080A;
+  --bg-sunken: #040405;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #FAFAFA;
+  --text-2: rgba(255, 255, 255, 0.66);
+  --text-3: rgba(255, 255, 255, 0.52);
+  --accent: #FF6A2B;
+  --ok: #3DDC97;
+  --warn: #F5B94A;
+  --risk: #FF5D5D;
+}
+
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, .font-heading {
-    font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  /* Accessible visible focus styles across the entire app */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 }
 
-/* Custom scrollbar */
+/* Two-tone headline signature utility */
+.two-tone {
+  color: var(--text);
+}
+.two-tone > span,
+.two-tone-sub {
+  color: var(--text-3);
+}
+
+/* Minimal dark hairline scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(30, 27, 24, 0.4);
+  background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(186, 133, 81, 0.4);
-  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(186, 133, 81, 0.7);
+  background: rgba(255, 255, 255, 0.22);
 }

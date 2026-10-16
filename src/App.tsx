@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
-import { OverviewTab } from './components/Dashboard/OverviewTab';
-import { NeedsYouQueue } from './components/Dashboard/NeedsYouQueue';
-import { CatalogueManager } from './components/Dashboard/CatalogueManager';
-import { OrdersTracker } from './components/Dashboard/OrdersTracker';
-import { KnowledgeBase } from './components/Dashboard/KnowledgeBase';
+import { AppShell } from './components/layout/AppShell';
+import { SurfaceView, DashboardTab } from './components/layout/Sidebar';
+import { OverviewSection } from './components/dashboard/OverviewSection';
+import { NeedsYouSection } from './components/dashboard/NeedsYouSection';
+import { CatalogueSection } from './components/dashboard/CatalogueSection';
+import { OrdersSection } from './components/dashboard/OrdersSection';
+import { KnowledgeSection } from './components/dashboard/KnowledgeSection';
 import { WhatsAppSimulator } from './components/CustomerSimulator/WhatsAppSimulator';
 import { BrandDemoStore } from './components/CustomerSimulator/BrandDemoStore';
 import { FootwearItem, Order, Conversation, UnansweredQuestion, BrandSettings, DashboardMetrics } from './types';
@@ -19,19 +20,18 @@ import {
 } from './data/mockData';
 
 export const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<'dashboard' | 'whatsapp' | 'storefront'>('dashboard');
-  const [dashboardTab, setDashboardTab] = useState<'overview' | 'needs-you' | 'catalogue' | 'orders' | 'knowledge'>('overview');
+  const [surface, setSurface] = useState<SurfaceView>('dashboard');
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('overview');
+  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(undefined);
 
-  // Application State
+  // Core Data Stores
   const [shoes, setShoes] = useState<FootwearItem[]>(INITIAL_SHOES);
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
   const [unansweredQuestions, setUnansweredQuestions] = useState<UnansweredQuestion[]>(INITIAL_UNANSWERED_QUESTIONS);
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(INITIAL_BRAND_SETTINGS);
   const [metrics, setMetrics] = useState<DashboardMetrics>(INITIAL_METRICS);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Load from backend API
   const refreshData = async () => {
     try {
       const [shoesData, ordersData, convsData, uqData, settingsData, metricsData] = await Promise.all([
@@ -42,7 +42,6 @@ export const App: React.FC = () => {
         api.getBrandSettings(),
         api.getMetrics(),
       ]);
-
       if (shoesData) setShoes(shoesData);
       if (ordersData) setOrders(ordersData);
       if (convsData) setConversations(convsData);
@@ -50,9 +49,7 @@ export const App: React.FC = () => {
       if (settingsData) setBrandSettings(settingsData);
       if (metricsData) setMetrics(metricsData);
     } catch (err) {
-      console.warn('API sync warning (using local fallback store):', err);
-    } finally {
-      setIsLoading(false);
+      console.warn('Backend sync warning, fallback active:', err);
     }
   };
 
@@ -60,32 +57,17 @@ export const App: React.FC = () => {
     refreshData();
   }, []);
 
-  // Handlers
+  // Handlers for Merchant Actions
   const handleReplyConversation = async (conversationId: string, text: string) => {
     try {
       const updated = await api.replyToConversation(conversationId, text);
       setConversations(prev => prev.map(c => c.id === conversationId ? updated : c));
     } catch {
-      // Local fallback
-      setConversations(prev => prev.map(c => {
-        if (c.id === conversationId) {
-          return {
-            ...c,
-            lastMessageSnippet: text,
-            lastUpdated: 'Just now',
-            messages: [
-              ...c.messages,
-              {
-                id: `m-${Date.now()}`,
-                sender: 'merchant',
-                text,
-                timestamp: 'Just now',
-              }
-            ]
-          };
-        }
-        return c;
-      }));
+      setConversations(prev => prev.map(c => c.id === conversationId ? {
+        ...c,
+        lastMessageSnippet: text,
+        messages: [...c.messages, { id: `m-${Date.now()}`, sender: 'merchant', text, timestamp: 'Just now' }]
+      } : c));
     }
   };
 
@@ -104,13 +86,10 @@ export const App: React.FC = () => {
       const updated = await api.updateStock(shoeId, sizeUK, newStock);
       setShoes(prev => prev.map(s => s.id === shoeId ? updated : s));
     } catch {
-      setShoes(prev => prev.map(s => {
-        if (s.id === shoeId) {
-          const sizes = s.sizes.map(sz => sz.sizeUK === sizeUK ? { ...sz, stock: newStock, inStock: newStock > 0 } : sz);
-          return { ...s, sizes };
-        }
-        return s;
-      }));
+      setShoes(prev => prev.map(s => s.id === shoeId ? {
+        ...s,
+        sizes: s.sizes.map(sz => sz.sizeUK === sizeUK ? { ...sz, stock: newStock, inStock: newStock > 0 } : sz)
+      } : s));
     }
   };
 
@@ -165,94 +144,94 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleOrderInfluenced = () => {
-    setMetrics(prev => ({
-      ...prev,
-      ordersInfluencedCount: prev.ordersInfluencedCount + 1,
-      ordersInfluencedRevenueINR: prev.ordersInfluencedRevenueINR + 3499,
-    }));
+  const handleTakeOverChat = (convId: string) => {
+    setSelectedConversationId(convId);
+    setDashboardTab('needs-you');
   };
 
   const needsYouCount = conversations.filter(c => c.status === 'needs_merchant').length;
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-sans">
-      <Navbar
-        activeView={activeView}
-        dashboardTab={dashboardTab}
-        onSelectView={setActiveView}
-        onSelectDashboardTab={setDashboardTab}
-        needsYouCount={needsYouCount}
-      />
+    <AppShell
+      surface={surface}
+      dashboardTab={dashboardTab}
+      onSelectSurface={setSurface}
+      onSelectDashboardTab={setDashboardTab}
+      needsYouCount={needsYouCount}
+    >
+      {surface === 'dashboard' && (
+        <>
+          {dashboardTab === 'overview' && (
+            <OverviewSection
+              metrics={metrics}
+              orders={orders}
+              conversations={conversations}
+              shoes={shoes}
+              unansweredQuestions={unansweredQuestions}
+              onNavigateTab={setDashboardTab}
+              onTakeOverChat={handleTakeOverChat}
+              onConfirmCod={handleConfirmCod}
+            />
+          )}
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeView === 'dashboard' && (
-          <>
-            {dashboardTab === 'overview' && (
-              <OverviewTab
-                metrics={metrics}
-                orders={orders}
-                conversations={conversations}
-                onNavigateTab={tab => setDashboardTab(tab)}
-                onOpenWhatsApp={() => setActiveView('whatsapp')}
-              />
-            )}
+          {dashboardTab === 'needs-you' && (
+            <NeedsYouSection
+              conversations={conversations}
+              selectedId={selectedConversationId}
+              onSelectConversation={setSelectedConversationId}
+              onReply={handleReplyConversation}
+              onResolve={handleResolveConversation}
+            />
+          )}
 
-            {dashboardTab === 'needs-you' && (
-              <NeedsYouQueue
-                conversations={conversations}
-                onReply={handleReplyConversation}
-                onResolve={handleResolveConversation}
-              />
-            )}
+          {dashboardTab === 'catalogue' && (
+            <CatalogueSection
+              shoes={shoes}
+              onUpdateStock={handleUpdateStock}
+              onUpdateShoe={handleUpdateShoe}
+            />
+          )}
 
-            {dashboardTab === 'catalogue' && (
-              <CatalogueManager
-                shoes={shoes}
-                onUpdateStock={handleUpdateStock}
-                onUpdateShoe={handleUpdateShoe}
-              />
-            )}
+          {dashboardTab === 'orders' && (
+            <OrdersSection
+              orders={orders}
+              onConfirmCod={handleConfirmCod}
+              onCancelCod={handleCancelCod}
+            />
+          )}
 
-            {dashboardTab === 'orders' && (
-              <OrdersTracker
-                orders={orders}
-                onConfirmCod={handleConfirmCod}
-                onCancelCod={handleCancelCod}
-              />
-            )}
+          {dashboardTab === 'knowledge' && (
+            <KnowledgeSection
+              brandSettings={brandSettings}
+              unansweredQuestions={unansweredQuestions}
+              onUpdateBrandSettings={handleUpdateBrandSettings}
+              onAddToFaq={handleAddToFaq}
+            />
+          )}
+        </>
+      )}
 
-            {dashboardTab === 'knowledge' && (
-              <KnowledgeBase
-                unansweredQuestions={unansweredQuestions}
-                brandSettings={brandSettings}
-                onAddToFaq={handleAddToFaq}
-                onUpdateBrandSettings={handleUpdateBrandSettings}
-              />
-            )}
-          </>
-        )}
+      {surface === 'whatsapp' && (
+        <WhatsAppSimulator
+          initialShoes={shoes}
+          onOrderInfluenced={() => {
+            setMetrics(prev => ({
+              ...prev,
+              ordersInfluencedCount: prev.ordersInfluencedCount + 1,
+              ordersInfluencedRevenueINR: prev.ordersInfluencedRevenueINR + 3499,
+            }));
+          }}
+        />
+      )}
 
-        {activeView === 'whatsapp' && (
-          <WhatsAppSimulator
-            initialShoes={shoes}
-            onOrderInfluenced={handleOrderInfluenced}
-          />
-        )}
-
-        {activeView === 'storefront' && (
-          <BrandDemoStore
-            shoes={shoes}
-            onOpenWhatsApp={() => setActiveView('whatsapp')}
-          />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-stone-800/80 bg-stone-950 py-4 text-center text-xs text-stone-500">
-        <p>SoleAI • The AI Sales & Order Assistant for Indian D2C Footwear Brands • "Turn DMs into orders, cut COD returns"</p>
-      </footer>
-    </div>
+      {surface === 'storefront' && (
+        <BrandDemoStore
+          shoes={shoes}
+          brandSettings={brandSettings}
+          onOpenWhatsApp={() => setSurface('whatsapp')}
+        />
+      )}
+    </AppShell>
   );
 };
 
