@@ -1,0 +1,8 @@
+{
+  "name": "SoleAI - AI Sales & Order Assistant for Footwear Brands",
+  "description": "Intelligent footwear sales assistant and merchant dashboard that turns WhatsApp and DM inquiries into orders, guides shoe sizing and fit, automates COD confirmations to slash RTO, and unifies customer support.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
